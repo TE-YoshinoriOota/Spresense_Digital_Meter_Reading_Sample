@@ -19,7 +19,7 @@
 
 
 // ピクセルの連続値を記録する閾値
-const float threshold = 0.1;
+const float threshold = 0.01;
 
 // 横方向の最大領域の開始座標(x)と幅を検出する
 //   output: セマンティックセグメンテーションの認識結果

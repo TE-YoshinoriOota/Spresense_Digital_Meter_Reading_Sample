@@ -96,6 +96,7 @@ DNNVariable input(DNN_WIDTH*DNN_HEIGHT*3);
 File nnbfile;
 
 const int measureButton = 9;
+static bool do_action = false;
 
 void CamCB(CamImage img) {
 
@@ -286,6 +287,8 @@ disp:
     height2 = s_height2*height/DNN2_HEIGHT + margin;
     printf("width = %d  height = %d\n", width2, height2);
 
+    draw_box_g(buf, sx2, sy2, width2, height2);
+
     // メーター領域を格納
     uint16_t *num_buf2 = (uint16_t*)malloc(width2*height*2*sizeof(uint16_t));
     int n = 0;
@@ -314,7 +317,7 @@ disp:
     }
 
     // 輝度情報をスムージング
-    const int tap = 3;
+    const int tap = 5;
     memcpy(&ave_th[0], &num_th[0], sizeof(float)*tap);
     for (int i = tap; i < width2 -tap; ++i) {
       float sum = 0;
@@ -355,6 +358,25 @@ disp:
       ave_distance = (distance[2] + distance[3]) / 2;
       printf("ave distance: %d  height: %d\n", ave_distance, height2);
 
+      // １つ目の数字
+      int p_x1 = sx2 + distance[0];
+      // ２つ目の数字
+      int p_x2 = sx2 + distance[0] + ave_distance*1;
+      // ３つ目の数字
+      int p_x3 = sx2 + distance[0] + ave_distance*2;
+      // ４つ目の数字
+      int p_x4 = sx2 + distance[0] + ave_distance*3;
+
+      // ボックスを描画
+      draw_box(buf, p_x1, sy2, ave_distance, height2);
+      draw_box(buf, p_x2, sy2, ave_distance, height2);
+      draw_box(buf, p_x3, sy2, ave_distance, height2);
+      draw_box(buf, p_x4, sy2, ave_distance, height2);
+
+      // シャッターボタン読み取り
+      // do_action = digitalRead(measureButton) ? false : true;
+      // Serial.println("do_action is " + String(do_action));
+
       // メーター領域の横幅が推論用画像の横幅より大きければ処理を行う
       if (ave_distance >= DNN3_WIDTH) {
         static uint16_t num_img[DNN3_WIDTH*DNN3_HEIGHT];
@@ -387,19 +409,14 @@ disp:
         nnbfile.close();
 #endif
 
-        // シャッターボタン読み取り
-        bool do_action = digitalRead(measureButton) ? false : true;
-        Serial.println("do_action is " + String(do_action));
 
         // １つ目の数字
-        int p_x1 = sx2 + distance[0];
-        copy_number_area(buf, num_img, p_x1, sy2, ave_distance, height2, mag_h2, mag_v2);
-
         if (do_action) {
 #if defined(SAVE_NUM_IMAGE) && defined(USE_SD_CARD)
           //// データセット用数字画像保存
           save_img(num_img, DNN3_WIDTH, DNN3_HEIGHT);
 #else  // 認識モード 
+          copy_number_area(buf, num_img, p_x1, sy2, ave_distance, height2, mag_h2, mag_v2);
           //// RGBのピクセルをフレームに分割
           fbuf_r = input.data();
           fbuf_g = fbuf_r + DNN3_WIDTH*DNN3_HEIGHT;
@@ -421,16 +438,15 @@ disp:
 #endif
         }
 
+  
         // ２つ目の数字
-        int p_x2 = sx2 + distance[0] + ave_distance*1;
-        copy_number_area(buf, num_img, p_x2, sy2, ave_distance, height2, mag_h2, mag_v2);
-
         if (do_action) {
 #if defined(SAVE_NUM_IMAGE) && defined(USE_SD_CARD)
           //// データセット用数字画像保存
           save_img(num_img, DNN3_WIDTH, DNN3_HEIGHT);
 #else // 認識モード
-          //// RGBのピクセルをフレームに分割
+        copy_number_area(buf, num_img, p_x2, sy2, ave_distance, height2, mag_h2, mag_v2);
+        //// RGBのピクセルをフレームに分割
           fbuf_r = input.data();
           fbuf_g = fbuf_r + DNN3_WIDTH*DNN3_HEIGHT;
           fbuf_b = fbuf_g + DNN3_WIDTH*DNN3_HEIGHT;
@@ -451,15 +467,14 @@ disp:
 #endif        
         }
 
-        // ３つ目の数字
-        int p_x3 = sx2 + distance[0] + ave_distance*2;
-        copy_number_area(buf, num_img, p_x3, sy2, ave_distance, height2, mag_h2, mag_v2);
 
+        // ３つ目の数字
         if (do_action) {
 #if defined(SAVE_NUM_IMAGE) && defined(USE_SD_CARD)
           //// データセット用数字画像保存
           save_img(num_img, DNN3_WIDTH, DNN3_HEIGHT);
 #else // 認識モード
+          copy_number_area(buf, num_img, p_x3, sy2, ave_distance, height2, mag_h2, mag_v2);
           //// RGBのピクセルをフレームに分割
           fbuf_r = input.data();
           fbuf_g = fbuf_r + DNN3_WIDTH*DNN3_HEIGHT;
@@ -481,15 +496,14 @@ disp:
 #endif        
         }
 
-        // ４つ目の数字
-        int p_x4 = sx2 + distance[0] + ave_distance*3;
-        copy_number_area(buf, num_img, p_x4, sy2, ave_distance, height2, mag_h2, mag_v2);
 
+        // ４つ目の数字
         if (do_action) {
 #if defined(SAVE_NUM_IMAGE) && defined(USE_SD_CARD)
           //// データセット用数字画像保存
           save_img(num_img, DNN3_WIDTH, DNN3_HEIGHT);
 #else // 認識モード
+          copy_number_area(buf, num_img, p_x4, sy2, ave_distance, height2, mag_h2, mag_v2);
           //// RGBのピクセルをフレームに分割
           fbuf_r = input.data();
           fbuf_g = fbuf_r + DNN3_WIDTH*DNN3_HEIGHT;
@@ -511,11 +525,6 @@ disp:
 #endif
         }
 
-        // ボックスを描画
-        draw_box(buf, p_x1, sy2, ave_distance, height2);
-        draw_box(buf, p_x2, sy2, ave_distance, height2);
-        draw_box(buf, p_x3, sy2, ave_distance, height2);
-        draw_box(buf, p_x4, sy2, ave_distance, height2);
 
 
         dnnrt.end();
@@ -536,6 +545,7 @@ disp:
           tft.fillRect(DNN_WIDTH,0, WIDTH-DNN_WIDTH*2, DNN_HEIGHT, ILI9341_BLUE);
         }
 #endif
+        do_action = false;
       }
     }
 
@@ -586,6 +596,10 @@ void save_img(uint16_t *buf, int width, int height) {
 }
 #endif
 
+void bShutter() {
+  do_action = true;
+}
+
 void setup() {
   Serial.begin(115200);
   tft.begin();
@@ -593,7 +607,7 @@ void setup() {
   tft.fillRect(0, 0, 320, 240, ILI9341_BLUE);
   
   pinMode(measureButton, INPUT_PULLUP);
-
+  attachInterrupt(digitalPinToInterrupt(measureButton), bShutter, FALLING);
   theCamera.begin();
   theCamera.startStreaming(true, CamCB);
 }

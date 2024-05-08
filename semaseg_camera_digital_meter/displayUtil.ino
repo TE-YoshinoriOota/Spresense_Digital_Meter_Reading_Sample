@@ -58,3 +58,32 @@ bool draw_box(uint16_t* buf, int sx, int sy, int w, int h) {
   }
   return true;
 }
+
+bool draw_box_g(uint16_t* buf, int sx, int sy, int w, int h) {
+  const int thickness = 2; // BOXの線の太さ
+  
+  if (sx < 0 || sy < 0 || w < 0 || h < 0) { 
+    Serial.println("draw_box parameter error");
+    return false;
+  }
+  if (sx+w >= OFFSET_X+CLIP_WIDTH) 
+    w = OFFSET_X+CLIP_WIDTH-sx-1;
+  if (sy+h >= OFFSET_Y+CLIP_HEIGHT) 
+    h = OFFSET_Y+CLIP_HEIGHT-sy;
+  
+  /* draw the horizontal line of the square */
+  for (int j = sx; j < sx+w; ++j) {
+    for (int n = 0; n < thickness; ++n) {
+      buf[(sy+n)*IMG_WIDTH + j] = ILI9341_GREEN;
+      buf[(sy+h-n)*IMG_WIDTH + j] = ILI9341_GREEN;
+    }
+  }
+  /* draw the vertical line of the square */
+  for (int i = sy; i < sy+h; ++i) {
+    for (int n = 0; n < thickness; ++n) { 
+      buf[i*IMG_WIDTH+sx+n] = ILI9341_GREEN;
+      buf[i*IMG_WIDTH+sx+w-n] = ILI9341_GREEN;
+    }
+  }
+  return true;
+}
